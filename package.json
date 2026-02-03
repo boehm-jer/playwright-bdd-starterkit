@@ -1,0 +1,10 @@
+{
+  "scripts": {
+        "test": "npx bddgen && npx playwright test",
+        "report": "npx playwright show-report"
+    },
+  "devDependencies": {
+    "@playwright/test": "^1.58.1",
+    "playwright-bdd": "^8.4.2"
+  }
+}
