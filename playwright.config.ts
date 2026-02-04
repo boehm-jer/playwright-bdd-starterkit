@@ -3,7 +3,7 @@ import { defineBddConfig } from 'playwright-bdd';
 
 const testDir = defineBddConfig({
   features: 'sample.feature',
-  steps: 'steps.js',
+  steps: 'steps.ts',
 });
 
 export default defineConfig({
