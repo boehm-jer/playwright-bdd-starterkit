@@ -7,8 +7,8 @@ Given('I am on home page', async ({ page }) => {
   await page.goto('https://playwright.dev');
 });
 
-When('I click link {string}', async ({ page }, name) => {
-  await page.getByRole('link', { name }).click();
+When('I click link {string}', async ({ page }, linkName) => {
+  await page.getByRole('link', {name: linkName }).click();
 });
 
 Then('I see in title {string}', async ({ page }, keyword) => {
