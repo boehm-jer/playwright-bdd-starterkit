@@ -1,7 +1,7 @@
 import { createBdd } from "playwright-bdd";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, Page } from "@playwright/test";
-import { axeCoreTag } from "../../helpers/e2eTypeDefinitions.ts";
+import { expect } from "@playwright/test";
+import { assertValidImpactValue, violationsAtOrAbove } from "../../helpers/accessibilityImpactHelpers.ts";
 
 const { Given, Then } = createBdd();
 
@@ -11,23 +11,22 @@ Given(`I am visiting {string}`, async ({ page }, website: string) => {
 
 Then(
   `{string} accessibility checks should pass`,
-  async ({ page }, benchmark: axeCoreTag) => {
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags([benchmark])
-      .analyze();
+  async ({ page }, impact: string) => {
+    assertValidImpactValue(impact);
+    const { violations } = await new AxeBuilder({ page }).analyze();
+    const failing = violations.filter(violationsAtOrAbove(impact));
 
-    expect(accessibilityScanResults.violations).toEqual([]);
+    expect(failing).toEqual([]);
   },
 );
+
 Then(
   `{string} accessibility checks should fail`,
-  async ({ page }, benchmark: axeCoreTag) => {
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags([benchmark])
-      .analyze();
-    
-    //TODO: Ensure the checks fail
-      expect(accessibilityScanResults.violations).toEqual([]);
-    // expect(accessibilityScanResults.violations).toThrowError;
+  async ({ page }, impact: string) => {
+    assertValidImpactValue(impact);
+    const { violations } = await new AxeBuilder({ page }).analyze();
+    const failing = violations.filter(violationsAtOrAbove(impact));
+
+    expect(failing.length).toBeGreaterThan(0);
   },
 );

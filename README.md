@@ -7,11 +7,20 @@ A starter kit for using behavior driven development and Playwright for end-to-en
 ## Install and run
 
 - `npm install` - install
-- `npm run test` - run all tests in terminal
+- `npm run test` - run all Playwright tests in terminal
 - `npm run report` - show html report on run tests
-- `npm run ui` - open playwright interactive ui
+- `npm run ui` - open Playwright interactive ui
 
-<!-- ## Accessibility Testing (AXE Core Plugin):
+## Feature tags
+- `npm run tag-test` - This will start a prompt for the tag then run only those Playwright tests.
+- `npm run only` - Run all Playwright tests with the @only tag. 
+
+
+
+<!-- 
+Things from the cypress starter kit to aim for implementing later...
+
+## Accessibility Testing (AXE Core Plugin):
 To run accessibility tests on a page utilize the `AccessibilityHelpers` class.
 ```typescript
 // Example:
@@ -25,6 +34,5 @@ To assert the content of pdf files, utilize the `PdfValidationHelpers` class.
 ```typescript
 // Example:
 PdfValidationHelper.ValidateDownloadedPdf('PDF_metadata.pdf','contain',['Testing', 'PDF', 'metadata'])
-```
-## Feature tags
-`npx cypress run --env tags="@my-tag-name"` -->
+``` -->
+
