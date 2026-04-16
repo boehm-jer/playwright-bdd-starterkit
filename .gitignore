@@ -430,3 +430,4 @@ FodyWeavers.xsd
 *.msp
 .vscode/launch.json
 .vscode/settings.json
+downloads/**

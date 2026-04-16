@@ -8,9 +8,14 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",
+    "@types/node": "^25.6.0",
     "playwright-bdd": "^8.4.2"
   },
+  "engines": {
+    "node": ">=20.16.0"
+  },
   "dependencies": {
-    "@axe-core/playwright": "^4.11.1"
+    "@axe-core/playwright": "^4.11.1",
+    "pdf-parse": "^2.4.5"
   }
 }

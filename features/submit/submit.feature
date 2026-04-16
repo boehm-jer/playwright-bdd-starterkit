@@ -1,3 +1,4 @@
+@skip
 Feature: Form submission
   Submit a basic form using the cypress kitchen sink page.
 

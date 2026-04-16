@@ -9,7 +9,5 @@ const testDir = defineBddConfig({
 export default defineConfig({
   testDir,
   reporter: 'html',
-  use: {
-    testIdAttribute: 'id' //default = 'data-testid'
-  }
+  use: {}
 });

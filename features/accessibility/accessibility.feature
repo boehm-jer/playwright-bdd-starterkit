@@ -1,4 +1,4 @@
-@accessibility @only
+@accessibility
 Feature: Accessibility
   Webpage should be free of accessibility violations.
 
