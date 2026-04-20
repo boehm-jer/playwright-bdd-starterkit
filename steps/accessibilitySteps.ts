@@ -1,7 +1,7 @@
 import { createBdd } from "playwright-bdd";
 import AxeBuilder from "@axe-core/playwright";
 import { expect } from "@playwright/test";
-import { assertValidImpactValue, violationsAtOrAbove } from "../helpers/accessibilityImpactHelpers.ts";
+import { assertValidImpactValue, violationsAtOrAbove } from "../helpers/accessibilityImpactHelpers";
 
 const { Given, Then } = createBdd();
 

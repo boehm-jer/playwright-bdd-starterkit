@@ -6,7 +6,7 @@ Feature: Accessibility
     Given I am visiting "<webpage>"
     Then "<impact>" accessibility checks should pass
     Examples:
-      |webpage                                | impact |
+      |webpage                                | impact    |
       |w3.org/WAI/standards-guidelines/wcag/  | serious   |
       |deque.com/axe/axe-core/                | critical  |
 
