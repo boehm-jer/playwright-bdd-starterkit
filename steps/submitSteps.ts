@@ -1,27 +1,16 @@
-import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
+import { test } from "../fixtures";
 
-const { Given, When, Then } = createBdd();
+const { Given, When, Then } = createBdd(test);
 
-Given("I am on the submission page", async ({ page }) => {
-  console.log("Given step starting...");
-  await page.goto("https://example.cypress.io/commands/actions");
-  console.log("Given step ending...");
+Given("I am on the submission page", async ({ submitDsl }) => {
+  await submitDsl.navigateToSubmissionPage();
 });
 
-When("I enter my valid text {string}", async ({ page }, text: string) => {
-  await page.getByLabel(`Coupon Code`).scrollIntoViewIfNeeded();
-  await page.getByLabel(`Coupon Code`).fill(text);
-  await page.keyboard.press("Enter");
+When("I enter my valid text {string}", async ({ submitDsl }, text: string) => {
+  await submitDsl.enterText(text);
 });
 
-Then(
-  "the page should confirm a successful form submission",
-  async ({ page }) => {
-    let locator = page
-      .locator(".well")
-      .filter({ has: page.locator("form.action-form") })
-      .getByText("Your form has been submitted!");
-    await expect(locator).toBeVisible();
-  },
-);
+Then("the page should confirm a successful form submission", async ({ submitDsl }) => {
+  await submitDsl.verifySuccessfulSubmission();
+});

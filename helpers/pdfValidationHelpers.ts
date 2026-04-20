@@ -1,5 +1,5 @@
 import { PDFParse } from 'pdf-parse';
-import fs from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
 import { expect } from '@playwright/test';
 
@@ -11,9 +11,8 @@ export default class PdfValidationHelpers {
         expectations: string[],
     ) {
         const filePath = path.join(process.cwd(), 'downloads', fileName);
-        const buffer = fs.readFileSync(filePath);
-        const parser = new PDFParse({ data: buffer });
-        const { text } = await parser.getText();
+        const buffer = await fs.readFile(filePath);
+        const { text } = await new PDFParse({ data: buffer }).getText();
 
         for (const expectation of expectations) {
             if (should === 'contain') {
