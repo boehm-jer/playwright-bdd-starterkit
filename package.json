@@ -4,7 +4,7 @@
     "ui": "npx bddgen && npx playwright test --ui",
     "report": "npx playwright show-report",
     "tags-test": "bash scripts/tags-test.sh",
-    "only": "npx bddgen --tags @only && npx playwright test"
+    "setup-hooks": "ln -sf \"$(pwd)/scripts/pre-commit.sh\" .git/hooks/pre-commit && echo 'Git hooks installed'"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
