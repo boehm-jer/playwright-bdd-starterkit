@@ -3,12 +3,14 @@ import { SampleDsl } from "./dsl/sampleDsl";
 import { AccessibilityDsl } from "./dsl/accessibilityDsl";
 import { PdfDownloadDsl } from "./dsl/pdfDownloadDsl";
 import { SubmitDsl } from "./dsl/submitDsl";
+import { VisualRegressionDsl } from "./dsl/visualRegressionDsl";
 
 export const test = base.extend<{
   sampleDsl: SampleDsl;
   accessibilityDsl: AccessibilityDsl;
   pdfDownloadDsl: PdfDownloadDsl;
   submitDsl: SubmitDsl;
+  visualRegressionDsl: VisualRegressionDsl;
 }>({
   sampleDsl: async ({ page }, use) => {
     await use(new SampleDsl(page));
@@ -21,5 +23,8 @@ export const test = base.extend<{
   },
   submitDsl: async ({ page }, use) => {
     await use(new SubmitDsl(page));
+  },
+  visualRegressionDsl: async ({ page }, use) => {
+    await use(new VisualRegressionDsl(page));
   },
 });

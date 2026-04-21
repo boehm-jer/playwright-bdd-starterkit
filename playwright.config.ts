@@ -8,6 +8,7 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
+  snapshotDir: 'snapshots',
   reporter: 'html',
   use: {}
 });

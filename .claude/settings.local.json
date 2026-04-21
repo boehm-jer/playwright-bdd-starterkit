@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebSearch",
-      "Bash(echo \"exit: $?\")",
-      "Bash(npm install:*)"
-    ]
-  }
-}

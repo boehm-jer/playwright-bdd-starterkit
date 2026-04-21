@@ -3,6 +3,10 @@
 \package-lock.json
 
 
+## Ignore Claude Code local config
+.claude/settings.local.json
+
+
 ## Ignore content genterated by BDD Playwright tests
 test-results
 playwright-report

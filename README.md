@@ -2,6 +2,12 @@
 
 A starter kit for end-to-end testing using [Playwright](https://playwright.dev) and [Cucumber BDD](https://cucumber.io/docs/bdd/) via [playwright-bdd](https://github.com/vitalets/playwright-bdd). Tests are written as human-readable `.feature` files and backed by typed TypeScript automation.
 
+This kit includes example implementation for: 
+1. Basic end-to-end testing.
+1. Axe-core accessibility testing. 
+1. Text assertions for PDFs. 
+1. Visual regression testing.
+
 ---
 
 ## Prerequisites
@@ -83,6 +89,60 @@ Tags filter which tests run. Every feature file should have a tag matching its f
 
 ---
 
+## Visual regression
+
+Visual regression tests capture a full-page screenshot and compare it to a stored baseline image. The test fails if the page has changed beyond a configurable pixel-difference tolerance.
+
+### How it works
+
+1. **First run** — no baseline exists yet, so Playwright writes one to `snapshots/` and the test fails with `"A snapshot doesn't exist … writing actual"`. This is expected.
+2. **Second run** — the baseline exists and the screenshot is compared against it. The test passes if the difference is within tolerance.
+
+Commit the files in `snapshots/` to source control so the baseline is shared across machines and CI.
+
+### Updating baselines
+
+When an intentional visual change is made, regenerate the baselines with:
+
+```bash
+npx playwright test --update-snapshots --grep @visualRegression
+```
+
+Review the updated images in `snapshots/` before committing them.
+
+### Snapshot location
+
+Snapshots are stored under `snapshots/` at the project root, namespaced by the generated spec path:
+
+```
+snapshots/
+└── features/visualRegression/visualRegression.feature.spec.js-snapshots/
+    └── example-homepage-darwin.png
+```
+
+The OS name is appended automatically because screenshots can differ between platforms. In CI, snapshots should be generated and compared on the same OS (e.g. always Linux).
+
+### Configuring tolerance
+
+`VisualRegressionHelpers.compareScreenshot` accepts an optional options object:
+
+| Option | Default | Description |
+|---|---|---|
+| `maxDiffPixelRatio` | `0.01` | Maximum fraction of pixels that may differ (0–1) |
+| `threshold` | `0.2` | Per-pixel color difference tolerance (0–1) |
+| `mask` | `[]` | CSS selectors for regions to exclude from comparison |
+
+Pass options from the DSL when calling the helper:
+
+```typescript
+await VisualRegressionHelpers.compareScreenshot(this.page, this.pendingScreenshotName, {
+  maxDiffPixelRatio: 0.05,
+  mask: ["[data-testid='timestamp']"],
+});
+```
+
+---
+
 ## Included examples
 
 | Feature | Demonstrates |
@@ -91,3 +151,4 @@ Tags filter which tests run. Every feature file should have a tag matching its f
 | `accessibility` | Axe-core accessibility scanning with impact-level filtering |
 | `pdfDownload` | File downloads and PDF content validation |
 | `submit` | Form interaction and submission confirmation |
+| `visualRegression` | Full-page screenshot comparison against a stored baseline |
