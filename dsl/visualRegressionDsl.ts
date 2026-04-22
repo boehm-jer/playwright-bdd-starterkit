@@ -1,5 +1,5 @@
 import { Page, expect } from "@playwright/test";
-import VisualRegressionHelpers from "../helpers/visualRegressionHelpers";
+import { compareScreenshot } from "../helpers/visualRegressionHelpers";
 
 export class VisualRegressionDsl {
   private pendingScreenshotName: string = "";
@@ -16,6 +16,6 @@ export class VisualRegressionDsl {
   }
 
   async compareWithBaseline(): Promise<void> {
-    await VisualRegressionHelpers.compareScreenshot(this.page, this.pendingScreenshotName);
+    await compareScreenshot(this.page, this.pendingScreenshotName);
   }
 }

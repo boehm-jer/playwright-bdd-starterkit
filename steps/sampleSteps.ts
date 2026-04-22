@@ -11,6 +11,6 @@ When("I click link {string}", async ({ sampleDsl }, linkName: string) => {
   await sampleDsl.clickLink(linkName);
 });
 
-Then("I see in title {string}", async ({ sampleDsl }, keyword: string) => {
+Then("the page title should contain {string}", async ({ sampleDsl }, keyword: string) => {
   await sampleDsl.verifyTitleContains(keyword);
 });

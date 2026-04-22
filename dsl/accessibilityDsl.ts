@@ -3,7 +3,6 @@ import AxeBuilder from "@axe-core/playwright";
 import {
   assertValidImpactValue,
   violationsAtOrAbove,
-  ImpactValue,
 } from "../helpers/accessibilityImpactHelpers";
 
 export class AccessibilityDsl {
@@ -16,6 +15,6 @@ export class AccessibilityDsl {
   async getViolationsAtOrAbove(impact: string) {
     assertValidImpactValue(impact);
     const { violations } = await new AxeBuilder({ page: this.page }).analyze();
-    return violations.filter(violationsAtOrAbove(impact as ImpactValue));
+    return violations.filter(violationsAtOrAbove(impact));
   }
 }

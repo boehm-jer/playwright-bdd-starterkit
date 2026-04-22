@@ -5,6 +5,7 @@ const { Given, When, Then } = createBdd(test);
 
 Given("I am visiting the website", async ({ pdfDownloadDsl }) => {
   await pdfDownloadDsl.visitWikimediaPage();
+  await pdfDownloadDsl.verifyPageLoaded();
 });
 
 When("I download the pdf file", async ({ pdfDownloadDsl }) => {

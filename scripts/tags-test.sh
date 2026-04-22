@@ -11,7 +11,7 @@ while true; do
   # Search for the tag in all feature files
   if grep -rq "$TAG" "$FEATURES_DIR" --include="*.feature"; then
     echo "Running tests for tag: $TAG"
-    npx bddgen --tags "$TAG" && npx playwright test
+    ./node_modules/.bin/bddgen --tags "$TAG" && ./node_modules/.bin/playwright test
     break
   else
     echo "Tag '$TAG' not found in any feature file. Please try again."

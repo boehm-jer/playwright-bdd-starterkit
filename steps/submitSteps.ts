@@ -7,7 +7,7 @@ Given("I am on the submission page", async ({ submitDsl }) => {
   await submitDsl.navigateToSubmissionPage();
 });
 
-When("I enter my valid text {string}", async ({ submitDsl }, text: string) => {
+When("I enter the coupon code {string}", async ({ submitDsl }, text: string) => {
   await submitDsl.enterText(text);
 });
 

@@ -10,5 +10,8 @@ export default defineConfig({
   testDir,
   snapshotDir: 'snapshots',
   reporter: 'html',
+  retries: process.env.CI ? 2 : 0,
+  fullyParallel: true,
+  timeout: 30000,
   use: {}
 });

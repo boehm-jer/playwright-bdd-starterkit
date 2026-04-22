@@ -1,8 +1,8 @@
 {
   "scripts": {
-    "test": "npx bddgen && npx playwright test",
-    "ui": "npx bddgen && npx playwright test --ui",
-    "report": "npx playwright show-report",
+    "test": "bddgen && playwright test",
+    "ui": "bddgen && playwright test --ui",
+    "report": "playwright show-report",
     "tags-test": "bash scripts/tags-test.sh",
     "setup-hooks": "ln -sf \"$(pwd)/scripts/pre-commit.sh\" .git/hooks/pre-commit && echo 'Git hooks installed'"
   },
@@ -13,7 +13,8 @@
     "pdf-parse": "^2.4.5",
     "playwright-bdd": "^8.4.2",
     "prettier": "^3.8.3",
-    "prettier-plugin-gherkin": "^3.1.3"
+    "prettier-plugin-gherkin": "^3.1.3",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=20.16.0"
