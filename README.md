@@ -4,13 +4,13 @@ A starter kit for end-to-end testing using [Playwright](https://playwright.dev) 
 
 ## Included examples
 
-> | Feature            | Demonstrates                                                |
-> | ------------------ | ----------------------------------------------------------- |
-> | `sample`           | Basic navigation and title assertion                        |
-> | `accessibility`    | Axe-core accessibility scanning with impact-level filtering |
-> | `pdfDownload`      | File downloads and PDF content validation                   |
-> | `submit`           | Form interaction and submission confirmation                |
-> | `visualRegression` | Full-page screenshot comparison against a stored baseline   |
+| Feature            | Demonstrates                                                |
+| ------------------ | ----------------------------------------------------------- |
+| `sample`           | Basic navigation and title assertion                        |
+| `accessibility`    | Axe-core accessibility scanning with impact-level filtering |
+| `pdfDownload`      | File downloads and PDF content validation                   |
+| `submit`           | Form interaction and submission confirmation                |
+| `visualRegression` | Full-page screenshot comparison against a stored baseline   |
 
 ---
 
@@ -99,10 +99,10 @@ The Playwright adapter (`adapters/playwright/PlaywrightBrowserDsl.ts`) is the on
 
 Three features cannot be expressed through the generic `BrowserDsl` primitives and still require a per-driver adapter class:
 
-| Feature            | Why it needs a driver-specific adapter                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------- |
-| `accessibility`    | Axe-core is injected into the page via `page.evaluate` — a Playwright-specific API       |
-| `pdfDownload`      | Detecting a file download requires listening to browser download events (`page.on(...)`) |
+| Feature            | Why it needs a driver-specific adapter                                                          |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `accessibility`    | Axe-core is injected into the page via `page.evaluate` — a Playwright-specific API              |
+| `pdfDownload`      | Detecting a file download requires listening to browser download events (`page.on(...)`)        |
 | `visualRegression` | Screenshot capture and pixel-diff comparison use Playwright's `expect(page).toHaveScreenshot()` |
 
 For these, the DSL file (`dsl/accessibilityDsl.ts`, etc.) defines an abstract class with the feature-specific methods, and `adapters/playwright/Playwright<Name>Dsl.ts` provides the concrete implementation. Adding a second driver for these features means writing one new adapter class per exception feature.
@@ -117,9 +117,10 @@ Most features only need the browser primitives and can be implemented without an
 
 1. Create `features/<name>/<name>.feature` with a `@<name>` tag and your scenarios
 2. Create `dsl/<name>Dsl.ts` — a plain class that takes `BrowserDsl` in its constructor:
+
    ```typescript
-   import { BrowserDsl } from './base/BrowserDsl';
-   import { by } from '../support/selector';
+   import { BrowserDsl } from "./base/BrowserDsl";
+   import { by } from "../support/selector";
 
    export class MyDsl {
      constructor(private readonly browser: BrowserDsl) {}
@@ -129,6 +130,7 @@ Most features only need the browser primitives and can be implemented without an
      }
    }
    ```
+
 3. Add the DSL to `context/ScenarioContext.ts`:
    ```typescript
    constructor(
@@ -151,15 +153,17 @@ Most features only need the browser primitives and can be implemented without an
 Use this path only when the feature needs APIs that `BrowserDsl` doesn't expose (download events, screenshot diffs, page injection, etc.).
 
 1–2. Same as above, but make `dsl/<name>Dsl.ts` an abstract class extending `BrowserDsl`:
-   ```typescript
-   import { BrowserDsl } from './base/BrowserDsl';
 
-   export abstract class MySpecialDsl extends BrowserDsl {
-     abstract doDriverSpecificThing(): Promise<void>;
-   }
-   ```
+```typescript
+import { BrowserDsl } from "./base/BrowserDsl";
+
+export abstract class MySpecialDsl extends BrowserDsl {
+  abstract doDriverSpecificThing(): Promise<void>;
+}
+```
+
 3. Create `adapters/playwright/PlaywrightMySpecialDsl.ts` extending both `PlaywrightBrowserDsl` and implementing `MySpecialDsl`
-4–6. Same remaining steps as the standard path
+   4–6. Same remaining steps as the standard path
 
 ---
 
