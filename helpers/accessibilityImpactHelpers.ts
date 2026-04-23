@@ -1,7 +1,6 @@
-/*
-Pattern: const array → type → assertion function → filter helper
-See e2eTypeDefinitions.ts for the full pattern explanation.
-*/
+// Pattern: const array → type → assertion function → filter helper.
+// The "as const" array is the single source of truth — it drives both the TypeScript
+// type (via indexed access) and the runtime guard, so they never drift apart.
 
 export const IMPACT_LEVELS = ["minor", "moderate", "serious", "critical"] as const;
 export type ImpactValue = typeof IMPACT_LEVELS[number];

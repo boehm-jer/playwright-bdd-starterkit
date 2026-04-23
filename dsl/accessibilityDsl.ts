@@ -1,20 +1,8 @@
-import { Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
-import {
-  assertValidImpactValue,
-  violationsAtOrAbove,
-} from "../helpers/accessibilityImpactHelpers";
+import { BrowserDsl } from './base/BrowserDsl';
 
-export class AccessibilityDsl {
-  constructor(private page: Page) {}
+export type AxeViolation = { impact?: string | null; [key: string]: unknown };
 
-  async navigateTo(website: string) {
-    await this.page.goto(`https://${website}`);
-  }
-
-  async getViolationsAtOrAbove(impact: string) {
-    assertValidImpactValue(impact);
-    const { violations } = await new AxeBuilder({ page: this.page }).analyze();
-    return violations.filter(violationsAtOrAbove(impact));
-  }
+export abstract class AccessibilityDsl extends BrowserDsl {
+  abstract navigateTo(website: string): Promise<void>;
+  abstract getViolationsAtOrAbove(impact: string): Promise<AxeViolation[]>;
 }

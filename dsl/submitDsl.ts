@@ -1,23 +1,20 @@
-import { Page, expect } from "@playwright/test";
+import { BrowserDsl } from './base/BrowserDsl';
+import { by } from '../support/selector';
 
 export class SubmitDsl {
-  constructor(private page: Page) {}
+  constructor(private readonly browser: BrowserDsl) {}
 
-  async navigateToSubmissionPage() {
-    await this.page.goto("https://example.cypress.io/commands/actions");
+  async navigateToSubmissionPage(): Promise<void> {
+    await this.browser.navigate("https://example.cypress.io/commands/actions");
   }
 
-  async enterText(text: string) {
-    await this.page.getByLabel("Coupon Code").scrollIntoViewIfNeeded();
-    await this.page.getByLabel("Coupon Code").fill(text);
-    await this.page.keyboard.press("Enter");
+  async enterText(text: string): Promise<void> {
+    await this.browser.scrollIntoView(by.label("Coupon Code"));
+    await this.browser.fill(by.label("Coupon Code"), text);
+    await this.browser.pressKey("Enter");
   }
 
-  async verifySuccessfulSubmission() {
-    const locator = this.page
-      .locator(".well")
-      .filter({ has: this.page.locator("form.action-form") })
-      .getByText("Your form has been submitted!");
-    await expect(locator).toBeVisible();
+  async isSubmissionConfirmed(): Promise<boolean> {
+    return this.browser.isVisible(by.text("Your form has been submitted!", true));
   }
 }

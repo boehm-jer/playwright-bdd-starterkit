@@ -1,17 +1,18 @@
-import { Page, expect } from "@playwright/test";
+import { BrowserDsl } from './base/BrowserDsl';
+import { by } from '../support/selector';
 
 export class SampleDsl {
-  constructor(private page: Page) {}
+  constructor(private readonly browser: BrowserDsl) {}
 
-  async goToHomePage() {
-    await this.page.goto("https://playwright.dev");
+  async goToHomePage(): Promise<void> {
+    await this.browser.navigate("https://playwright.dev");
   }
 
-  async clickLink(linkName: string) {
-    await this.page.getByRole("link", { name: linkName }).click();
+  async clickLink(name: string): Promise<void> {
+    await this.browser.clickAndNavigate(by.role("link", { name }));
   }
 
-  async verifyTitleContains(keyword: string) {
-    await expect(this.page).toHaveTitle(new RegExp(keyword));
+  async getTitle(): Promise<string> {
+    return this.browser.getTitle();
   }
 }

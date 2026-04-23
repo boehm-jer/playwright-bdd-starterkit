@@ -1,16 +1,13 @@
-import { createBdd } from "playwright-bdd";
-import { test } from "../fixtures";
+import { Given, When, Then } from "../support/bdd";
 
-const { Given, When, Then } = createBdd(test);
-
-Given("I navigate to the example.com homepage", async ({ visualRegressionDsl }) => {
-  await visualRegressionDsl.navigateToExampleCom();
+Given("I navigate to the example.com homepage", async ({ scenario }) => {
+  await scenario.visualRegression.navigateToExampleCom();
 });
 
-When("I capture a full-page screenshot named {string}", async ({ visualRegressionDsl }, name: string) => {
-  await visualRegressionDsl.setScreenshotName(name);
+When("I capture a full-page screenshot named {string}", async ({ scenario }, name: string) => {
+  await scenario.visualRegression.setScreenshotName(name);
 });
 
-Then("the screenshot should match the visual baseline", async ({ visualRegressionDsl }) => {
-  await visualRegressionDsl.compareWithBaseline();
+Then("the screenshot should match the visual baseline", async ({ scenario }) => {
+  await scenario.visualRegression.compareWithBaseline();
 });
