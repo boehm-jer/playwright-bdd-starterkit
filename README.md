@@ -30,6 +30,12 @@ npm run setup-hooks
 
 `setup-hooks` installs a pre-commit git hook that prevents committing an `@only` tag — see [Tags](#tags) for why that matters.
 
+Prettier is used for TypeScript and `.feature` files (via `prettier-plugin-gherkin`). Format the project with:
+
+```bash
+npx prettier --write .
+```
+
 ---
 
 ## Running tests
@@ -46,21 +52,12 @@ npm run setup-hooks
 ## Project structure
 
 ```
-features/               # Gherkin .feature files — one folder per feature
-steps/                  # Step definitions — map Gherkin steps to DSL calls
-dsl/                    # Feature DSLs — driver-agnostic business logic
-  base/                 # Abstract base classes (BaseDsl, BrowserDsl)
-adapters/               # Driver implementations
-  playwright/           # Playwright adapter — one file for the generic driver, one per exception feature
-  cypress/              # Placeholder for a future Cypress adapter
-context/                # ScenarioContext — DI container wiring DSL instances together
-support/                # Framework shims: bdd.ts (Given/When/Then), selector.ts (by helper)
-helpers/                # Stateless utilities (PDF parsing, accessibility filters, screenshot comparison)
-config/                 # Placeholder for environment/driver configuration
-setup/api/              # Placeholder for API-based test setup
-fixtures.ts             # Playwright fixture — creates one ScenarioContext per scenario
-playwright.config.ts
+features/           dsl/            adapters/
+steps/              context/        support/
+helpers/            fixtures.ts     playwright.config.ts
 ```
+
+See [Architecture](#architecture) for what each layer does. `config/` and `setup/api/` are empty placeholders for environment configuration and API-based test setup.
 
 ---
 
@@ -152,7 +149,10 @@ Most features only need the browser primitives and can be implemented without an
 
 Use this path only when the feature needs APIs that `BrowserDsl` doesn't expose (download events, screenshot diffs, page injection, etc.).
 
-1–2. Same as above, but make `dsl/<name>Dsl.ts` an abstract class extending `BrowserDsl`:
+The key difference from the standard path is in step 2: the DSL must be an **abstract class** extending `BrowserDsl` rather than a plain class:
+
+1. Create `features/<name>/<name>.feature` with a `@<name>` tag and your scenarios
+2. Create `dsl/<name>Dsl.ts` as an abstract class extending `BrowserDsl`:
 
 ```typescript
 import { BrowserDsl } from "./base/BrowserDsl";
@@ -163,7 +163,7 @@ export abstract class MySpecialDsl extends BrowserDsl {
 ```
 
 3. Create `adapters/playwright/PlaywrightMySpecialDsl.ts` extending both `PlaywrightBrowserDsl` and implementing `MySpecialDsl`
-   4–6. Same remaining steps as the standard path
+   4–5. Same remaining steps as the standard path
 
 ---
 
