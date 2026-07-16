@@ -2,6 +2,28 @@
 
 A starter kit for end-to-end testing using [Playwright](https://playwright.dev) and [Cucumber BDD](https://cucumber.io/docs/bdd/) via [playwright-bdd](https://github.com/vitalets/playwright-bdd). Tests are written as human-readable `.feature` files and backed by typed TypeScript automation. The architecture is designed to be driver-agnostic — switching from Playwright to another browser driver (Cypress, WebdriverIO) requires writing exactly one new class.
 
+## Table of contents
+
+- [Included examples](#included-examples)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Running tests](#running-tests)
+- [Project structure](#project-structure)
+- [Architecture](#architecture)
+  - [Why it exists](#why-it-exists)
+  - [How it works](#how-it-works)
+  - [Exception cases](#exception-cases)
+- [Adding a new feature](#adding-a-new-feature)
+  - [Standard feature (driver-agnostic)](#standard-feature-driver-agnostic)
+  - [Exception feature (driver-specific)](#exception-feature-driver-specific)
+- [Feature file conventions](#feature-file-conventions)
+- [Advanced features](#advanced-features)
+  - [Accessibility](#accessibility)
+  - [PDF download](#pdf-download)
+  - [Visual regression](#visual-regression)
+
+---
+
 ## Included examples
 
 | Feature            | Demonstrates                                                |
@@ -28,7 +50,7 @@ npx playwright install
 npm run setup-hooks
 ```
 
-`setup-hooks` installs a pre-commit git hook that prevents committing an `@only` tag — see [Tags](#tags) for why that matters.
+`setup-hooks` installs a pre-commit git hook that prevents committing an `@only` tag — see [Tags](FEATURE_FILE_CONVENTIONS.md#tags) for why that matters.
 
 Prettier is used for TypeScript and `.feature` files (via `prettier-plugin-gherkin`). Format the project with:
 
@@ -167,31 +189,38 @@ export abstract class MySpecialDsl extends BrowserDsl {
 
 ---
 
-## Tags
+## Feature file conventions
 
-Tags filter which tests run. Every feature file should have a tag matching its folder name (e.g. `@accessibility`, `@submit`).
+This project follows a specific "recipe" for writing Gherkin — one `Given` per scenario, strict `When`/`Then` alternation, a short list of legal scenario shapes, and tag conventions (including the `@only` guard). It's a recommendation distilled from experience, not a hard requirement.
 
-| Tag       | Purpose                                                          |
-| --------- | ---------------------------------------------------------------- |
-| `@<name>` | Identifies tests by feature — used with `npm run tags-test`      |
-| `@only`   | Focuses a single test during development — **never commit this** |
-
-> **Warning:** `@only` compiles to `test.only()`. If committed, `npm run test` will silently skip every other feature. The pre-commit hook installed by `npm run setup-hooks` will block commits that contain it.
+**→ See [FEATURE_FILE_CONVENTIONS.md](FEATURE_FILE_CONVENTIONS.md) for the full recipe, worked examples, and the tag reference.**
 
 ---
 
-## Visual regression
+## Advanced features
+
+Three features can't be expressed through the generic `BrowserDsl` primitives, so each ships its own driver-specific adapter class. See [Architecture → Exception cases](#exception-cases) for why they need one and how to add a second driver for them.
+
+### Accessibility
+
+Injects [axe-core](https://github.com/dequelabs/axe-core) into the page (via `page.evaluate`) and scans for accessibility violations, filtered by impact level (e.g. only `serious` and above). Implemented in `adapters/playwright/PlaywrightAccessibilityDsl.ts`.
+
+### PDF download
+
+Triggers a file download, captures it by listening to the browser's download events (`page.on(...)`), and validates the downloaded PDF's contents. Implemented in `adapters/playwright/PlaywrightPdfDownloadDsl.ts`.
+
+### Visual regression
 
 Visual regression tests capture a full-page screenshot and compare it to a stored baseline image. The test fails if the page has changed beyond a configurable pixel-difference tolerance.
 
-### How it works
+#### How it works
 
 1. **First run** — no baseline exists yet, so Playwright writes one to `snapshots/` and the test fails with `"A snapshot doesn't exist … writing actual"`. This is expected.
 2. **Second run** — the baseline exists and the screenshot is compared against it. The test passes if the difference is within tolerance.
 
 Commit the files in `snapshots/` to source control so the baseline is shared across machines and CI.
 
-### Updating baselines
+#### Updating baselines
 
 When an intentional visual change is made, regenerate the baselines with:
 
@@ -201,7 +230,7 @@ npx playwright test --update-snapshots --grep @visualRegression
 
 Review the updated images in `snapshots/` before committing them.
 
-### Snapshot location
+#### Snapshot location
 
 Snapshots are stored under `snapshots/` at the project root, namespaced by the generated spec path:
 
@@ -213,7 +242,7 @@ snapshots/
 
 The OS name is appended automatically because screenshots can differ between platforms. In CI, snapshots should be generated and compared on the same OS (e.g. always Linux).
 
-### Configuring tolerance
+#### Configuring tolerance
 
 `compareScreenshot` in `helpers/visualRegressionHelpers.ts` accepts an optional options object:
 
