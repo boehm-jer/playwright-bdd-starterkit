@@ -17,6 +17,7 @@ A starter kit for end-to-end testing using [Playwright](https://playwright.dev) 
   - [Standard feature (driver-agnostic)](#standard-feature-driver-agnostic)
   - [Exception feature (driver-specific)](#exception-feature-driver-specific)
 - [Feature file conventions](#feature-file-conventions)
+- [Test layer conventions](#test-layer-conventions)
 - [Advanced features](#advanced-features)
   - [Accessibility](#accessibility)
   - [PDF download](#pdf-download)
@@ -194,6 +195,17 @@ export abstract class MySpecialDsl extends BrowserDsl {
 This project follows a specific "recipe" for writing Gherkin — one `Given` per scenario, strict `When`/`Then` alternation, a short list of legal scenario shapes, and tag conventions (including the `@only` guard). It's a recommendation distilled from experience, not a hard requirement.
 
 **→ See [FEATURE_FILE_CONVENTIONS.md](FEATURE_FILE_CONVENTIONS.md) for the full recipe, worked examples, and the tag reference.**
+
+---
+
+## Test layer conventions
+
+Every feature is exactly three files — a `.feature`, a dedicated step file, and a dedicated DSL —
+named from one identifier. Step bodies contain nothing but DSL calls, and shared code has a home per
+kind: browser primitives in `dsl/base/`, domain behaviour in `dsl/shared/<domain>/`, and app-wide
+interactions in `helpers/`. These rules are what keep the driver swappable.
+
+**→ See [TEST_LAYER_CONVENTIONS.md](TEST_LAYER_CONVENTIONS.md) for the full rules, worked examples for both the standard and exception paths, an anti-pattern table, and a completion checklist.**
 
 ---
 
