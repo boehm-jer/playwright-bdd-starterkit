@@ -24,7 +24,7 @@ To run a single feature directly:
 
 ## Architecture
 
-The project separates *what* a test does from *how the browser does it*, so switching drivers requires writing exactly one new class.
+The project separates _what_ a test does from _how the browser does it_, so switching drivers requires writing exactly one new class.
 
 ```
 .feature  →  steps/  →  dsl/  →  adapters/  →  Browser
@@ -32,14 +32,14 @@ The project separates *what* a test does from *how the browser does it*, so swit
 
 ### Layers
 
-| Layer | Location | Role |
-|---|---|---|
-| Feature files | `features/` | Gherkin scenarios — one folder per feature, tagged `@<name>` |
-| Step definitions | `steps/` | Map Gherkin phrases to DSL method calls via `{ scenario }` |
-| DSL classes | `dsl/` | Business logic — use only `BrowserDsl` primitives and `by.*` selectors |
-| Adapter | `adapters/playwright/` | Translates `Selector` values to Playwright `Locator`s |
-| DI container | `context/ScenarioContext.ts` | Holds all DSL instances for a scenario |
-| Fixture | `fixtures.ts` | Creates one `ScenarioContext` per test via `createPlaywrightContext` |
+| Layer            | Location                     | Role                                                                   |
+| ---------------- | ---------------------------- | ---------------------------------------------------------------------- |
+| Feature files    | `features/`                  | Gherkin scenarios — one folder per feature, tagged `@<name>`           |
+| Step definitions | `steps/`                     | Map Gherkin phrases to DSL method calls via `{ scenario }`             |
+| DSL classes      | `dsl/`                       | Business logic — use only `BrowserDsl` primitives and `by.*` selectors |
+| Adapter          | `adapters/playwright/`       | Translates `Selector` values to Playwright `Locator`s                  |
+| DI container     | `context/ScenarioContext.ts` | Holds all DSL instances for a scenario                                 |
+| Fixture          | `fixtures.ts`                | Creates one `ScenarioContext` per test via `createPlaywrightContext`   |
 
 ### Key abstractions
 
@@ -55,10 +55,34 @@ The project separates *what* a test does from *how the browser does it*, so swit
 
 **Exception** (driver-specific): DSL is an abstract class extending `BrowserDsl`. A `Playwright<Name>Dsl` in `adapters/playwright/` provides the concrete implementation. Currently: `accessibility` (axe-core via `page.evaluate`), `pdfDownload` (download events via `page.on`), and `visualRegression` (screenshot diff via `expect(page).toHaveScreenshot()`).
 
+## Test layer rules
+
+Every feature is **exactly three files** — `features/<name>/<name>.feature`, `steps/<name>Steps.ts`,
+`dsl/<name>Dsl.ts` — named from one camelCase identifier that also supplies the `@<name>` tag and
+the `scenario.<name>` field. Never share or split those files across features.
+
+- **A step body contains only DSL calls** — optionally capturing the last return into a `const` and
+  asserting on it with `expect`. No selectors, URLs, control flow, browser APIs, or module state.
+- **Step files import only** `../support/bdd` and (when asserting) `expect` from `@playwright/test`.
+- `dsl/` holds two kinds of file: **feature DSLs** (`<name>Dsl.ts`, one per feature file) and
+  **shared code** — `dsl/base/` (driver primitives), `dsl/shared/<domain>/` (domain behaviour reused
+  by several features, e.g. `invoiceDetailsSectionDsl`), and `helpers/` (stateless functions —
+  app-wide interactions like `clickSave`/`selectFromDropdown` taking `BrowserDsl`, plus data
+  plumbing). Compose interactions in a helper rather than adding a `BrowserDsl` primitive, which
+  would oblige every adapter to implement it.
+- **Shared domain DSLs are injected into feature DSLs, never added to `ScenarioContext`** — the
+  container has exactly one field per feature, so a step can only reach its own feature's vocabulary.
+  Extract to `dsl/shared/` on the second use, not the first.
+- **Standard features return data and let the step assert**; exception adapters assert internally
+  and expose `Promise<void>` methods.
+- Cross-step state is a private field on the DSL instance, never module scope.
+
+**→ Full rules, worked examples, anti-patterns, and a completion checklist: [TEST_LAYER_CONVENTIONS.md](TEST_LAYER_CONVENTIONS.md)**
+
 ## Gherkin rules
 
 - Each scenario has exactly one `Given` step — no `Background`, no `And` chaining
-- Steps describe *intent*, not browser mechanics (e.g. "I submit the form", not "I click the submit button")
+- Steps describe _intent_, not browser mechanics (e.g. "I submit the form", not "I click the submit button")
 - Every feature file is tagged `@<featureName>` matching its folder name
 
 ## Tags
@@ -68,7 +92,7 @@ The project separates *what* a test does from *how the browser does it*, so swit
 
 ## Visual regression
 
-Snapshots live in `snapshots/` and are committed to source control. The first run against a new baseline writes the snapshot and *fails* — that is expected. Run a second time to compare.
+Snapshots live in `snapshots/` and are committed to source control. The first run against a new baseline writes the snapshot and _fails_ — that is expected. Run a second time to compare.
 
 Update baselines after an intentional visual change:
 
@@ -85,3 +109,5 @@ Snapshots are OS-specific (filename includes `darwin`, `linux`, etc.). In CI, al
 3. Add field to `context/ScenarioContext.ts`
 4. Wire in `adapters/playwright/index.ts` (`createPlaywrightContext`)
 5. `steps/<name>Steps.ts` importing `{ Given, When, Then }` from `../support/bdd`
+
+See [TEST_LAYER_CONVENTIONS.md](TEST_LAYER_CONVENTIONS.md) for worked examples of both paths.
