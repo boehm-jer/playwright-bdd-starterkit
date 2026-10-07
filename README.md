@@ -18,6 +18,7 @@ A starter kit for end-to-end testing using [Playwright](https://playwright.dev) 
   - [Exception feature (driver-specific)](#exception-feature-driver-specific)
 - [Feature file conventions](#feature-file-conventions)
 - [Test layer conventions](#test-layer-conventions)
+- [Claude skills](#claude-skills)
 - [Advanced features](#advanced-features)
   - [Accessibility](#accessibility)
   - [PDF download](#pdf-download)
@@ -215,6 +216,26 @@ kind: browser primitives in `dsl/base/`, domain behaviour in `dsl/shared/<domain
 interactions in `helpers/`. These rules are what keep the driver swappable.
 
 **→ See [TEST_LAYER_CONVENTIONS.md](TEST_LAYER_CONVENTIONS.md) for the full rules, worked examples for both the standard and exception paths, an anti-pattern table, and a completion checklist.**
+
+---
+
+## Claude skills
+
+Two [Claude Code skills](https://code.claude.com/docs/en/skills) ship in `.claude/skills/`. They load
+automatically for anyone running Claude Code in this repo, or in a project copied from it.
+
+| Skill           | What it does                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `judgment-quiz` | Pins down business logic with a blinded quiz. Every decision the system makes, or should make, becomes a plain-language scenario, and the person accountable for the behavior answers without seeing what the system does today. The answers are compared with the code, the running site, its config, or other stakeholders. It works with or without unit tests, and before any code exists. |
+| `feature-files` | Writes `.feature` files that follow [FEATURE_FILE_CONVENTIONS.md](FEATURE_FILE_CONVENTIONS.md), from quiz results, tickets or descriptions, and lints them.                                                                                                                                                                                                                                    |
+
+They chain: the quiz's resolved answers become feature files, and those become the acceptance tests.
+Ask Claude for either one by name, or describe the task ("help me pin down how publishing should work
+for editors"). The linter also runs on its own:
+
+```bash
+node .claude/skills/feature-files/scripts/lint-features.mjs   # checks every features/**/*.feature
+```
 
 ---
 
