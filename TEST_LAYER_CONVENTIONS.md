@@ -22,9 +22,12 @@
     - [Shared domain DSLs (`dsl/shared/<domain>/`)](#shared-domain-dsls-dslshareddomain)
     - [Helpers (`helpers/`)](#helpers-helpers)
 - [Where assertions live](#where-assertions-live)
+  - [Return observations with their evidence](#return-observations-with-their-evidence)
 - [Where scenario state lives](#where-scenario-state-lives)
 - [Naming conventions](#naming-conventions)
 - [Wiring a feature into the container](#wiring-a-feature-into-the-container)
+- [Infrastructure outside the triad](#infrastructure-outside-the-triad)
+- [Proving a scenario can fail](#proving-a-scenario-can-fail)
 - [Worked example — standard feature](#worked-example--standard-feature)
 - [Worked example — exception feature](#worked-example--exception-feature)
 - [Worked example — shared domain DSL](#worked-example--shared-domain-dsl)
@@ -38,7 +41,7 @@
 A feature is **always** represented by three files, and only three:
 
 ```
-features/<name>/<name>.feature     the specification    (what the business asked for)
+features/<name>.feature            the specification    (what the business asked for)
 steps/<name>Steps.ts               the binding          (Gherkin phrase → DSL call)
 dsl/<name>Dsl.ts                   the vocabulary       (what this feature can do)
 ```
@@ -49,14 +52,18 @@ The relationship is strictly **1 : 1 : 1**.
 - Never let two features share a step file or a DSL file.
 - Never split one feature across two step files or two DSL files.
 - If a feature seems to need a fourth file, it doesn't — the code belongs in
-  [`dsl/base/`](dsl/base/) (a new browser primitive), `dsl/shared/<domain>/` (behaviour several
-  features share), or [`helpers/`](helpers/) (a stateless utility). See
+  [`dsl/base/`](https://github.com/boehm-jer/playwright-bdd-starterkit/tree/main/dsl/base/) (a new browser primitive), `dsl/shared/<domain>/` (behaviour several
+  features share), or [`helpers/`](https://github.com/boehm-jer/playwright-bdd-starterkit/tree/main/helpers/) (a stateless utility). See
   [Kind 2](#kind-2--shared-dsl-and-helpers).
 
 An **exception feature** (one that cannot be expressed through generic browser primitives) adds a
 _fourth_ file, but it is a driver adapter, not a fourth test-layer file:
 `adapters/playwright/Playwright<Name>Dsl.ts`. The triad is still intact — the extra file is the
-price of driver specificity, and it lives in the driver's folder, not the feature's.
+price of driver specificity, and it lives in the driver's folder.
+
+Feature files sit directly in `features/`, one file per feature — no folder per feature. A folder
+that only ever holds one file buys nothing. Anything that needs a feature's name (a script, a
+report) takes it from the file's **basename**, never its parent directory.
 
 ### Why the triad is rigid
 
@@ -78,8 +85,7 @@ Pick the feature name once, in `camelCase`, and it appears — unchanged — in 
 
 | Location                 | Form                                         | Example                     |
 | ------------------------ | -------------------------------------------- | --------------------------- |
-| Feature folder           | `features/<name>/`                           | `features/pdfDownload/`     |
-| Feature file             | `<name>.feature`                             | `pdfDownload.feature`       |
+| Feature file             | `features/<name>.feature`                    | `pdfDownload.feature`       |
 | Feature tag              | `@<name>`                                    | `@pdfDownload`              |
 | Step file                | `steps/<name>Steps.ts`                       | `steps/pdfDownloadSteps.ts` |
 | DSL file                 | `dsl/<name>Dsl.ts`                           | `dsl/pdfDownloadDsl.ts`     |
@@ -149,7 +155,7 @@ import { BrowserDsl } from "./base/BrowserDsl";
 ```
 
 Declarations only. It may also export supporting types (see `AxeViolation` in
-[dsl/accessibilityDsl.ts](dsl/accessibilityDsl.ts)).
+[dsl/accessibilityDsl.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/dsl/accessibilityDsl.ts)).
 
 **`helpers/*Helpers.ts`** — interaction helpers import `BrowserDsl` and `by`, never
 `@playwright/test`. Utility helpers may import the driver, but then only `adapters/` may import
@@ -175,8 +181,8 @@ rule in this document.
 Legal contents of a step body, and nothing else:
 
 1. One or more `await scenario.<feature>.<method>(...)` calls.
-2. Optionally, capturing the return of the last such call into a `const`.
-3. Optionally, a single `expect(...)` assertion on that captured value.
+2. Optionally, capturing the return of the last such call into a `const` (destructuring is fine).
+3. Optionally, one or more `expect(...)` assertions on that captured value or its fields.
 
 ```typescript
 // steps/submitSteps.ts — the canonical shapes
@@ -200,19 +206,38 @@ Then(
 ### Rules
 
 - **A step may call more than one DSL method.** A `Given` that both navigates and confirms arrival
-  is legitimate — see [steps/pdfDownloadSteps.ts](steps/pdfDownloadSteps.ts). What it may not do is
+  is legitimate — see [steps/pdfDownloadSteps.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/steps/pdfDownloadSteps.ts). What it may not do is
   contain anything that is _not_ a DSL call.
 - **No logic.** No `if`, no loops, no `try`/`catch`, no string manipulation, no arithmetic, no
   building of selectors or URLs. If a step needs a decision made, the decision belongs in the DSL.
 - **No primitives.** Exception-feature DSLs extend `BrowserDsl` and therefore expose `click`,
   `fill`, etc. on `scenario.<feature>`. Steps must still never call them. A step calls only the
   methods the feature DSL itself declares.
+- **Several assertions on one observation are fine; order them most-diagnostic first.** A Then that
+  checks "the page did not throw" and "the order is confirmed" should assert the errors first,
+  so a page that crashed reports its exception rather than "expected confirmed, received
+  error". Each claim gets its own `expect` — but they all read the one value the step
+  captured. A second DSL call to fetch something else to assert on means the DSL method is
+  returning too little.
+- **Give an `expect` a message whenever the bare value would not explain a failure** —
+  `expect(outcome, outcomeDescription).toBe("confirmed")`. The message is built by the DSL (see
+  [Return observations with their evidence](#return-observations-with-their-evidence)); the step
+  only passes it along.
 - **Gherkin parameters pass straight through.** `{string}` captures become typed function
   parameters and are forwarded to the DSL untouched.
 - **Step text is globally unique.** `playwright-bdd` registers step definitions globally across all
   step files, so two features cannot both define `Given("I am on the home page")`. Phrase each
   step so it is unmistakably about its own feature (`"I am visiting {string}"` vs
-  `"I am visiting the website"`).
+  `"I am visiting the website"`). The duplicate-definition error `bddgen` raises is the guardrail
+  that enforces the 1:1 triad, not an obstacle to route around — never "fix" it with a shared step
+  file.
+  - **Technique:** when several features need a step that means nearly the same thing, vary the
+    _leading phrase_ to name the guarantee each feature is about (`"a visitor opens the catalogue
+    to compare …"` vs `"a visitor opens the catalogue to check stock for …"`), and keep any long
+    shared parameter tail identical. The wording then carries each feature's intent rather than
+    being arbitrarily different.
+  - **Avoid `(`, `/` and `{` in step text** other than `{string}`-style parameters — they are
+    Cucumber-expression syntax and change what the text matches.
 - **A step file defines steps only for its own feature file**, and every step in that feature file
   has a definition in that step file.
 
@@ -283,7 +308,48 @@ itself — the feature file states only what it cares about.
 
 The second kind of file is **not tied to any feature**. It exists so feature DSLs stay small and so
 the same capability is not re-implemented per feature. It has three tiers, and picking the right one
-is a design decision, not a filing decision:
+is a design decision, not a filing decision.
+
+> **When to extract — the portability test.** Put behaviour in `helpers/` or
+> `dsl/shared/<domain>/` **on first use** when all three hold:
+>
+> 1. **Feature-blind.** It names no concept that belongs to the calling feature, and would read
+>    correctly if called from a feature that has not been written yet. If it cannot be named
+>    without the feature's name, it is not shared.
+> 2. **A plausible second consumer.** You can point to one — an existing feature with the same
+>    need, a planned feature, or a domain area that more than one feature must pass through (a
+>    page every scenario drives, a component library used app-wide, sign-in, failure-message
+>    formatting). "Might be useful someday", with nobody to name, does not count.
+> 3. **Stable shape.** Its parameters describe the domain, not the first caller's quirks.
+>
+> If any one fails, keep it as a private method on the feature DSL. **When genuinely unsure,
+> prefer shared**: logic duplicated across features drifts silently and is found only when the
+> copies disagree, while a shared function with one caller costs only an import. Shared placement
+> is also what makes code _discoverable_ — a private method on someone else's DSL is invisible to
+> the author of the next feature, who will write it again.
+>
+> **Search before you write.** Before adding a private DSL method, look in `helpers/` and
+> `dsl/shared/`. If something there already does what you need, use it.
+>
+> **Share the location, not the function body.** Finding something _close_ is a reason to put your
+> code next to it, not a reason to make it bigger. Extend an existing function only when the new
+> need is genuinely the same behaviour; otherwise write a small sibling in the same file, and pull
+> any common core out into a third small function both can call. The shared file is what prevents
+> duplication; each function in it stays lean. A function is turning into a catch-all — and the
+> change should be a sibling — when it grows:
+>
+> - a boolean or `mode`/`kind` parameter that switches between behaviours;
+> - an options object whose callers each use mostly different keys;
+> - parameters only one caller ever passes;
+> - callers that each use only part of what it returns;
+> - a name that needs "or" to describe it, or has gone vague (`handle`, `process`, `check`).
+>
+> **Demote what did not earn its place.** If a shared item still has one consumer after its named
+> second consumer landed without using it, either generalise it so that consumer can use it, or
+> fold it back into its one caller. A shared function nobody shares is a misleading signpost.
+>
+> Primitives in `dsl/base/` follow a stricter, different test — see
+> [Primitive contracts](#primitive-contracts-dslbase).
 
 | Tier                    | Location               | Holds                                                            | Example                                                 |
 | ----------------------- | ---------------------- | ---------------------------------------------------------------- | ------------------------------------------------------- |
@@ -306,13 +372,23 @@ the browser. A dropdown is a dropdown in any app; an invoice payments section is
 
 #### Primitive contracts (`dsl/base/`)
 
-[BaseDsl.ts](dsl/base/BaseDsl.ts) declares the driver-neutral, selector-free primitives (`navigate`,
-`getTitle`, `getUrl`); [BrowserDsl.ts](dsl/base/BrowserDsl.ts) extends it with the selector-driven
-ones (`click`, `fill`, `isVisible`, …), and [support/selector.ts](support/selector.ts) supplies the
+[BaseDsl.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/dsl/base/BaseDsl.ts) declares the driver-neutral, selector-free primitives (`navigate`,
+`getTitle`, `getUrl`); [BrowserDsl.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/dsl/base/BrowserDsl.ts) extends it with the selector-driven
+ones (`click`, `fill`, `isVisible`, …), and [support/selector.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/support/selector.ts) supplies the
 `Selector` union and `by.*` builders they speak in.
 
-Adding a method here obliges **every** adapter, for every driver, to implement it. Do it only when
-two or more features need a genuinely primitive capability — never to make one feature's DSL shorter.
+Adding a method here obliges **every** adapter, for every driver, to implement it, so a wrong guess
+is expensive. The test is about capability, not popularity — how many features use it is irrelevant.
+Add a primitive only when **both** hold:
+
+- the capability **cannot be composed** from existing primitives (if it can, it is an interaction
+  helper); and
+- **every reasonable driver can provide it** — name the Playwright, Cypress, Selenium and
+  WebdriverIO equivalents in the doc comment, as the existing primitives do.
+
+Typical qualifying cases are holes in the contract: there was no way to express "wait until this
+appears" (`waitFor`), to read a form control's value (`getAllValues`), or to see that the page threw
+(`getUncaughtErrors`). Making one feature's DSL shorter never qualifies.
 
 #### Shared domain DSLs (`dsl/shared/<domain>/`)
 
@@ -325,9 +401,9 @@ Take an app with five invoice-related features. The wrong shapes are both extrem
 feature DSLs each re-implementing the same invoice screens. The right shape is both:
 
 ```
-dsl/purchaseInvoicesDsl.ts              feature DSL   — 1:1 with features/purchaseInvoices/
-dsl/salesInvoicesDsl.ts                 feature DSL   — 1:1 with features/salesInvoices/
-dsl/creditNotesDsl.ts                   feature DSL   — 1:1 with features/creditNotes/
+dsl/purchaseInvoicesDsl.ts              feature DSL   — 1:1 with features/purchaseInvoices.feature
+dsl/salesInvoicesDsl.ts                 feature DSL   — 1:1 with features/salesInvoices.feature
+dsl/creditNotesDsl.ts                   feature DSL   — 1:1 with features/creditNotes.feature
 
 dsl/shared/invoice/invoiceDetailsSectionDsl.ts     shared — the details section, wherever it appears
 dsl/shared/invoice/invoicePaymentsSectionDsl.ts    shared — the payments section
@@ -365,15 +441,15 @@ Rules for shared domain DSLs:
   API it follows the exception variant: an abstract class in `dsl/shared/<domain>/` plus a
   `adapters/playwright/Playwright<Name>Dsl.ts` implementation.
 - **Never exposed on `ScenarioContext`.** Shared DSLs are constructor-injected into the feature DSLs
-  that need them, by the factory in [adapters/playwright/index.ts](adapters/playwright/index.ts).
+  that need them, by the factory in [adapters/playwright/index.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/adapters/playwright/index.ts).
   Putting one on `scenario` would let a step call `scenario.invoiceDetailsSection.…` directly,
   bypassing the feature's own vocabulary and dissolving the triad. **Steps reach exactly one DSL:
   their own feature's.**
 - **Dependencies point down, never up or sideways into features.** A shared DSL may compose another
   shared DSL. It must never import a feature DSL, and must never know which feature is using it.
-- **Extract on the second use, not the first.** Behaviour lives as a private method on the feature
-  DSL until a second feature needs it; then it is promoted to `dsl/shared/<domain>/`. Speculative
-  sharing produces the same monster as no sharing.
+- **Extract when it passes the portability test** (see [Kind 2](#kind-2--shared-dsl-and-helpers)),
+  which can be on first use. Use a `Dsl` class here for a domain area with several related
+  operations; a single stateless operation is a helper function, not a class.
 - **One instance per scenario, shared by every feature DSL that takes it.** The factory constructs it
   once and passes the same object in, so any state it holds stays consistent within the scenario and
   still resets between scenarios.
@@ -442,16 +518,17 @@ Rules:
 
 **Utility helpers — data, file, and assertion plumbing.**
 
-No browser interaction of their own: [accessibilityImpactHelpers.ts](helpers/accessibilityImpactHelpers.ts)
-is pure TypeScript; [pdfValidationHelpers.ts](helpers/pdfValidationHelpers.ts) reads and parses a
-file. A utility helper may be driver-aware — [visualRegressionHelpers.ts](helpers/visualRegressionHelpers.ts)
+No browser interaction of their own: [accessibilityImpactHelpers.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/helpers/accessibilityImpactHelpers.ts)
+is pure TypeScript; [pdfValidationHelpers.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/helpers/pdfValidationHelpers.ts) reads and parses a
+file. A utility helper may be driver-aware — [visualRegressionHelpers.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/helpers/visualRegressionHelpers.ts)
 takes a Playwright `Page` — but then it is importable **only from `adapters/`**, never from a
 standard DSL.
 
 Rules for both sub-kinds:
 
-- **Never feature-specific.** A helper must be usable by a feature that does not exist yet. If only
-  one feature will ever call it, keep it as a private DSL method.
+- **Never feature-specific.** A helper must be usable by a feature that does not exist yet — the
+  portability test in [Kind 2](#kind-2--shared-dsl-and-helpers). If only one feature could ever
+  call it, keep it as a private DSL method.
 - **Never imported by a step.** A step calls a DSL method; the DSL calls the helper.
 - **Naming:** `helpers/<domain>Helpers.ts`, exporting named functions (not a class).
 - **Stateless.** Anything that needs to remember something between calls is a DSL, not a helper —
@@ -490,6 +567,49 @@ await scenario.visualRegression.compareWithBaseline(); // asserts inside the ada
 Never assert inside a standard DSL, and never re-assert in a step over an
 already-asserting exception method.
 
+### Return observations with their evidence
+
+A bare boolean is fine for a single hand-written scenario. Once a feature runs dozens or hundreds of
+Examples rows, `expected true, received false` is not a usable failure. Return an **observation**
+instead: the classification _and_ the sentence explaining it, built from one read of the page.
+
+```typescript
+// dsl/orderStatusDsl.ts
+export type StatusObservation = {
+  outcome: "confirmed" | "pending" | "error";
+  outcomeDescription: string;
+  errors: string[];
+  errorsDescription: string;
+};
+
+async observeStatus(): Promise<StatusObservation> {
+  const errors = await this.browser.getUncaughtErrors(); // errors first — see BrowserDsl
+  const heading = errors.length ? "" : await this.browser.getText(by.role("heading", { level: 1 }));
+  const outcome = errors.length ? "error" : heading.includes("Confirmed") ? "confirmed" : "pending";
+  return {
+    outcome,
+    outcomeDescription: `expected the order to be confirmed, but the page heading was "${heading}"`,
+    errors,
+    errorsDescription: `the page threw: ${errors.join(" | ")}`,
+  };
+}
+
+// steps/orderStatusSteps.ts
+Then("the order is confirmed", async ({ scenario }) => {
+  const { outcome, outcomeDescription, errors, errorsDescription } =
+    await scenario.orderStatus.observeStatus();
+  expect(errors, errorsDescription).toEqual([]);
+  expect(outcome, outcomeDescription).toBe("confirmed");
+});
+```
+
+What the page _means_ stays in the DSL; the claim stays in the step; and the failure reads
+`expected the order to be confirmed, but the page heading was "Payment declined"`.
+
+**Assertions are not shared logic.** Never build a generic "assert this page" helper or factory that
+takes a description of what to check. Shared code returns observations; the decision about what
+passes is made in the step, one `expect` per claim.
+
 ---
 
 ## Where scenario state lives
@@ -523,7 +643,7 @@ Module state leaks across scenarios and breaks parallel execution.
 
 | Location               | Filename case                   | Example                                              |
 | ---------------------- | ------------------------------- | ---------------------------------------------------- |
-| `features/<name>/`     | camelCase folder and file       | `features/visualRegression/visualRegression.feature` |
+| `features/`            | camelCase file                  | `features/visualRegression.feature`                  |
 | `steps/`               | camelCase, `Steps` suffix       | `visualRegressionSteps.ts`                           |
 | `dsl/` (feature DSLs)  | camelCase, `Dsl` suffix         | `visualRegressionDsl.ts`                             |
 | `dsl/base/`            | PascalCase                      | `BrowserDsl.ts`                                      |
@@ -542,12 +662,14 @@ one in `dsl/shared/<domain>/` is bound to none.
 
 Two files change, and they must stay in lockstep:
 
-1. [context/ScenarioContext.ts](context/ScenarioContext.ts) — add a `public readonly <name>:` field
+1. [context/ScenarioContext.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/context/ScenarioContext.ts) — add a `public readonly <name>:` field
    typed as the **`dsl/` export** (concrete class for standard, abstract class for exception).
    Never type it as the adapter.
-2. [adapters/playwright/index.ts](adapters/playwright/index.ts) — construct the instance in
+2. [adapters/playwright/index.ts](https://github.com/boehm-jer/playwright-bdd-starterkit/blob/main/adapters/playwright/index.ts) — construct the instance in
    `createPlaywrightContext`. Standard DSLs receive the shared `browser` instance; exception
-   adapters receive `page` directly.
+   adapters receive `page` and `testInfo` directly. Either kind may additionally receive shared
+   domain DSLs — an exception feature that must reach a screen through the app's normal UI before
+   doing its driver-only work takes the same shared DSL a standard feature would.
 
 `ScenarioContext`'s constructor is **positional** — append the new field at the end of the
 constructor and the matching argument at the end of the `new ScenarioContext(...)` call. Getting
@@ -557,8 +679,8 @@ Shared domain DSLs are wired differently: they are constructed in the same facto
 into the feature DSLs that need them**, not added to `ScenarioContext`.
 
 ```typescript
-export function createPlaywrightContext(page: Page): ScenarioContext {
-  const browser = new PlaywrightBrowserDsl(page);
+export function createPlaywrightContext(page: Page, testInfo: TestInfo): ScenarioContext {
+  const browser = new PlaywrightBrowserDsl(page, testInfo);
 
   // shared domain DSLs — constructed once, injected, never exposed on the context
   const invoiceDetails = new InvoiceDetailsSectionDsl(browser);
@@ -575,7 +697,53 @@ export function createPlaywrightContext(page: Page): ScenarioContext {
 `ScenarioContext` therefore has exactly one field per feature — no more, no fewer. That invariant is
 what guarantees a step can only reach its own feature's vocabulary.
 
-No other file changes. `fixtures.ts` and `support/bdd.ts` are written once and never touched again.
+No other file changes. **Feature work never touches `fixtures.ts` or `support/bdd.ts`.** They change
+only for chassis-wide plumbing that every scenario needs — handing the runner's metadata to the
+adapter, or getting past an environment-level access gate before any scenario runs — and such a
+change belongs in the starter-kit, not in one consumer.
+
+---
+
+## Infrastructure outside the triad
+
+Real suites grow files that are not part of any feature. Give each a fixed home so the next project
+does not have to invent one:
+
+| Concern                                                                 | Home                                                                   |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Credentials and target-environment selection                            | `config/` — read lazily, never logged, never defaulted                 |
+| An environment access gate every scenario must pass (e.g. a preview-deployment password or bypass token) | `adapters/playwright/<name>.ts`, called once from `fixtures.ts` |
+| Signing in, and replaying a captured session                            | `helpers/authHelpers.ts`, using `captureSession` / `restoreSession`   |
+| Preflight checks, data generators, validators for Examples tables       | `scripts/`, chained ahead of the run in `npm test`                    |
+
+Secrets in `config/` come from an untracked `.env`. A file that reads them must have no fallback
+value, so a missing secret fails loudly instead of silently testing as an anonymous user; and an
+anonymous-only run must not fail for want of a secret it never uses.
+
+---
+
+## Proving a scenario can fail
+
+A green scenario only means something if it would have gone red. Before a scenario counts as done:
+
+- **Run a negative control.** Break the thing under test on purpose and confirm the scenario fails
+  — _and that it fails for the right reason_. Read the failure message. A control that goes red
+  because of a timeout somewhere else proves nothing.
+- **Choose the control by what is asserted.** If the scenario asserts that something _renders_,
+  stopping the backend is a valid control. If it asserts that something is _not found_ or
+  _rejected_, stopping the backend is **invalid** — a dead backend usually produces exactly that
+  outcome, so the scenario goes greener. Change the input instead: point one row at a case known to
+  succeed and require it to go red.
+- **Assert positive outcomes, not the absence of errors.** "No server error is shown" passes on a
+  backend that is down and renders an empty page. Assert that the expected content _is_ there.
+- **Never wait with a fixed delay.** Wait for a concrete signal that the app reached the state —
+  an element appearing, an attribute settling — with a timeout that is only an upper bound. A
+  sleep is either too short (flaky) or too long (slow), and hides what the test is waiting for.
+- **Check data rows against their source of truth.** When Examples rows name real application
+  data (option labels, record names), validate them against the source the app itself reads before
+  the browser starts, so a renamed or withdrawn value fails in seconds and names itself. Any such
+  bulk check must report rows it _could not read_ separately from rows that failed — a dropped
+  request is not an empty result.
 
 ---
 
@@ -583,7 +751,7 @@ No other file changes. `fixtures.ts` and `support/bdd.ts` are written once and n
 
 Feature `checkout`, driver-agnostic. Three test-layer files plus two wiring edits.
 
-**1. `features/checkout/checkout.feature`**
+**1. `features/checkout.feature`**
 
 ```gherkin
 @checkout
@@ -693,7 +861,7 @@ export class PlaywrightFileUploadDsl
 ```
 
 **Wiring** — `ScenarioContext` holds `public readonly fileUpload: FileUploadDsl` (the abstract
-type), and `createPlaywrightContext` constructs `new PlaywrightFileUploadDsl(page)`.
+type), and `createPlaywrightContext` constructs `new PlaywrightFileUploadDsl(page, testInfo)`.
 
 ---
 
@@ -778,7 +946,7 @@ payments UI changes, one file changes.
 | `await scenario.pdfDownload.click(by.css(".x"))` in a step          | Primitives leaked past the DSL                                               | Add a named method to the feature DSL                                     |
 | `if` / loop / string building in a step                             | Logic escaped the DSL                                                        | Move the decision into the DSL method                                     |
 | `import { Page } from "@playwright/test"` in a step or standard DSL | Driver coupling; kills portability                                           | Use `BrowserDsl` primitives and `by.*`                                    |
-| A URL or CSS selector in a `.feature` file                          | Feature files state intent, not mechanics                                    | Keep it in the DSL; parameterise only what the scenario is _about_        |
+| A URL or CSS selector in a `.feature` file                          | Feature files state intent, not mechanics                                    | Keep it in the DSL; parameterise only what the scenario is _about_ — a URL is legitimate only when the URL itself is the input under test (access control, malformed-request handling) |
 | `expect` inside a standard DSL                                      | Standard DSLs must not import the driver                                     | Return data; assert in the step                                           |
 | `let lastValue` at module scope in a step file                      | Leaks across scenarios, breaks parallelism                                   | Private field on the DSL instance                                         |
 | A step importing from `helpers/`                                    | Skips the DSL layer entirely                                                 | Call a DSL method that uses the helper                                    |
@@ -788,13 +956,17 @@ payments UI changes, one file changes.
 | One `invoiceDsl` serving five invoice feature files                 | Breaks 1:1:1 and grows into a monster                                        | Feature DSL per feature + shared section DSLs under `dsl/shared/invoice/` |
 | A shared DSL importing a feature DSL                                | Dependency points upward; couples the domain to one feature                  | Keep shared DSLs feature-blind; move the logic down                       |
 | A shared DSL named after a feature (`purchaseInvoiceSharedDsl`)     | It is a feature DSL in disguise                                              | Name it for the domain area or page section                               |
-| Extracting to `dsl/shared/` on first use                            | Speculative sharing is as costly as none                                     | Keep it private until a second feature needs it                           |
+| Extracting code that names its calling feature, or has no plausible second consumer | Speculative sharing is as costly as none                     | Keep it private; apply the portability test                               |
+| Re-implementing privately a behaviour that already exists in `helpers/` or `dsl/shared/` | Duplicated logic drifts silently                        | Use the shared one, or add a sibling beside it                            |
+| Growing a shared function with mode flags or caller-specific parameters | Turns a lean function into a catch-all                                   | Write a small sibling in the same file; extract a common core             |
+| A generic "assert this page" helper or assertion factory            | Moves the claim out of the step; becomes a catch-all                         | Return an observation; assert in the step                                 |
 | `selectFromDropdown` added to `BrowserDsl`                          | A composition of existing primitives; forces every adapter to reimplement it | Interaction helper in `helpers/` taking `BrowserDsl`                      |
 | An interaction helper typed `(page: Page, …)`                       | Driver-coupled, so no standard DSL can call it                               | Type the first parameter as `BrowserDsl`                                  |
 | An interaction helper that knows about invoices                     | Domain knowledge escaped into `helpers/`                                     | Move it to `dsl/shared/<domain>/` as a DSL                                |
 | A helper holding state between calls                                | Helpers are stateless; state must reset per scenario                         | Private field on a DSL instance                                           |
-| A helper only one feature will ever use                             | Fragments the feature's own vocabulary                                       | Keep it as a private DSL method                                           |
-| New primitive added to `BrowserDsl` for one feature                 | Forces every adapter to implement it                                         | Keep it in the feature's DSL/adapter until a second feature needs it      |
+| A helper only one feature could ever use                            | Fragments the feature's own vocabulary                                       | Keep it as a private DSL method                                           |
+| New primitive added to `BrowserDsl` for convenience                 | Forces every adapter to implement it                                         | Compose existing primitives in a helper; add a primitive only for a capability the contract lacks |
+| `sleep` / fixed-delay waits                                         | Flaky when too short, slow when too long, hides what is awaited              | `waitFor` a concrete app or DOM signal with an upper-bound timeout        |
 
 ---
 
@@ -803,7 +975,7 @@ payments UI changes, one file changes.
 Before finishing any feature work, verify:
 
 - [ ] Exactly three files exist for the feature, named from the same identifier (plus one adapter if — and only if — it is an exception feature).
-- [ ] The feature file carries `@<name>` matching its folder.
+- [ ] The feature file carries `@<name>` matching its file name.
 - [ ] Every step in the feature file has a definition in `steps/<name>Steps.ts`, and that file defines nothing else.
 - [ ] Every step body contains only DSL calls, an optional captured `const`, and an optional `expect` on it.
 - [ ] The step file imports only `../support/bdd` and (if asserting) `expect`.
@@ -812,8 +984,10 @@ Before finishing any feature work, verify:
 - [ ] Selectors, URLs, and waits live in the DSL/adapter — never in the feature or step file.
 - [ ] Cross-step state is a private field on the DSL instance.
 - [ ] App-wide interactions (`clickSave`, `selectFromDropdown`, `setDateInput`) are interaction helpers taking `BrowserDsl` — not new `BrowserDsl` primitives and not domain DSLs.
+- [ ] Searched `helpers/` and `dsl/shared/` before adding private DSL logic; reused, or added a lean sibling — no mode flags bolted onto an existing function.
 - [ ] Behaviour shared with another feature lives in `dsl/shared/<domain>/`, is named for the domain, imports no feature DSL, and is injected — not added to `ScenarioContext`.
 - [ ] `ScenarioContext` has exactly one field per feature.
 - [ ] `ScenarioContext` and `createPlaywrightContext` were updated in the same position, with the field typed as the `dsl/` export.
 - [ ] Step text does not collide with any step defined by another feature.
+- [ ] The scenario passed a negative control that failed for the right reason.
 - [ ] The Gherkin obeys [FEATURE_FILE_CONVENTIONS.md](FEATURE_FILE_CONVENTIONS.md).
