@@ -51,6 +51,11 @@ npx playwright install
 npm run setup-hooks
 ```
 
+Dependency versions are pinned **exactly** — no `^` or `~`. `playwright-bdd` reaches into
+Playwright internals, and its declared peer range (`@playwright/test >=1.44`) is wider than what
+actually works: a caret range can silently pull a newer Playwright that breaks `bddgen` outright.
+Upgrade `@playwright/test` and `playwright-bdd` together, deliberately, as a tested pair.
+
 `setup-hooks` installs a pre-commit git hook that prevents committing an `@only` tag — see [Tags](FEATURE_FILE_CONVENTIONS.md#tags) for why that matters.
 
 Prettier is used for TypeScript and `.feature` files (via `prettier-plugin-gherkin`). Format the project with:
@@ -65,12 +70,16 @@ npx prettier --write .
 
 | Command             | Description                                  |
 | ------------------- | -------------------------------------------- |
-| `npm run test`      | Run all tests in the terminal                |
+| `npm run test`      | Typecheck, then run all tests in the terminal |
+| `npm run typecheck` | Typecheck only (`tsc --noEmit`)              |
 | `npm run ui`        | Open Playwright's interactive UI             |
 | `npm run report`    | Open the HTML report from the last run       |
 | `npm run tags-test` | Prompt for a tag and run only matching tests |
 
 ---
+
+`npm run test` typechecks first because `playwright test` transpiles without typechecking — a
+type error in a file no scenario happens to exercise would otherwise never surface.
 
 ## Project structure
 
@@ -96,7 +105,7 @@ A typical BDD project ties every feature directly to its browser driver. That's 
 .feature  →  steps/  →  dsl/  →  adapters/  →  Browser
 ```
 
-The key abstraction is `BrowserDsl` in `dsl/base/BrowserDsl.ts`. It defines the primitive operations any browser can perform: `click`, `fill`, `navigate`, `getText`, `isVisible`, etc. Feature DSLs are concrete classes that take a `BrowserDsl` instance in their constructor and express business logic entirely through those primitives:
+The key abstraction is `BrowserDsl` in `dsl/base/BrowserDsl.ts`. It defines the primitive operations any browser can perform: `click`, `fill`, `navigate`, `getText`, `isVisible`, `waitFor`, `getUncaughtErrors`, etc. Feature DSLs are concrete classes that take a `BrowserDsl` instance in their constructor and express business logic entirely through those primitives:
 
 ```typescript
 // dsl/sampleDsl.ts — knows nothing about Playwright
@@ -135,7 +144,7 @@ For these, the DSL file (`dsl/accessibilityDsl.ts`, etc.) defines an abstract cl
 
 Most features only need the browser primitives and can be implemented without any knowledge of Playwright.
 
-1. Create `features/<name>/<name>.feature` with a `@<name>` tag and your scenarios
+1. Create `features/<name>.feature` with a `@<name>` tag and your scenarios
 2. Create `dsl/<name>Dsl.ts` — a plain class that takes `BrowserDsl` in its constructor:
 
    ```typescript
@@ -160,7 +169,7 @@ Most features only need the browser primitives and can be implemented without an
    ```
 4. Wire it into the factory in `adapters/playwright/index.ts`:
    ```typescript
-   const browser = new PlaywrightBrowserDsl(page);
+   const browser = new PlaywrightBrowserDsl(page, testInfo);
    return new ScenarioContext(
      // existing DSLs...
      new MyDsl(browser),
@@ -174,7 +183,7 @@ Use this path only when the feature needs APIs that `BrowserDsl` doesn't expose 
 
 The key difference from the standard path is in step 2: the DSL must be an **abstract class** extending `BrowserDsl` rather than a plain class:
 
-1. Create `features/<name>/<name>.feature` with a `@<name>` tag and your scenarios
+1. Create `features/<name>.feature` with a `@<name>` tag and your scenarios
 2. Create `dsl/<name>Dsl.ts` as an abstract class extending `BrowserDsl`:
 
 ```typescript
@@ -248,7 +257,7 @@ Snapshots are stored under `snapshots/` at the project root, namespaced by the g
 
 ```
 snapshots/
-└── features/visualRegression/visualRegression.feature.spec.js-snapshots/
+└── features/visualRegression.feature.spec.js-snapshots/
     └── example-homepage-darwin.png
 ```
 

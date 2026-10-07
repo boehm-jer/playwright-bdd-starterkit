@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install && npx playwright install   # first-time setup
 npm run setup-hooks                     # install @only pre-commit guard
 
-npm run test        # bddgen + run all tests (headless)
+npm run test        # typecheck + bddgen + run all tests (headless)
+npm run typecheck   # tsc --noEmit only — `playwright test` never typechecks on its own
 npm run ui          # bddgen + open Playwright UI
 npm run tags-test   # interactive: prompt for a tag, run matching tests only
 npm run report      # open HTML report from the last run
@@ -34,7 +35,7 @@ The project separates _what_ a test does from _how the browser does it_, so swit
 
 | Layer            | Location                     | Role                                                                   |
 | ---------------- | ---------------------------- | ---------------------------------------------------------------------- |
-| Feature files    | `features/`                  | Gherkin scenarios — one folder per feature, tagged `@<name>`           |
+| Feature files    | `features/`                  | Gherkin scenarios — one file per feature, tagged `@<name>`             |
 | Step definitions | `steps/`                     | Map Gherkin phrases to DSL method calls via `{ scenario }`             |
 | DSL classes      | `dsl/`                       | Business logic — use only `BrowserDsl` primitives and `by.*` selectors |
 | Adapter          | `adapters/playwright/`       | Translates `Selector` values to Playwright `Locator`s                  |
@@ -57,12 +58,12 @@ The project separates _what_ a test does from _how the browser does it_, so swit
 
 ## Test layer rules
 
-Every feature is **exactly three files** — `features/<name>/<name>.feature`, `steps/<name>Steps.ts`,
+Every feature is **exactly three files** — `features/<name>.feature`, `steps/<name>Steps.ts`,
 `dsl/<name>Dsl.ts` — named from one camelCase identifier that also supplies the `@<name>` tag and
 the `scenario.<name>` field. Never share or split those files across features.
 
 - **A step body contains only DSL calls** — optionally capturing the last return into a `const` and
-  asserting on it with `expect`. No selectors, URLs, control flow, browser APIs, or module state.
+  asserting on it (or its fields) with one or more `expect`s, most-diagnostic first. No selectors, URLs, control flow, browser APIs, or module state.
 - **Step files import only** `../support/bdd` and (when asserting) `expect` from `@playwright/test`.
 - `dsl/` holds two kinds of file: **feature DSLs** (`<name>Dsl.ts`, one per feature file) and
   **shared code** — `dsl/base/` (driver primitives), `dsl/shared/<domain>/` (domain behaviour reused
@@ -72,9 +73,16 @@ the `scenario.<name>` field. Never share or split those files across features.
   would oblige every adapter to implement it.
 - **Shared domain DSLs are injected into feature DSLs, never added to `ScenarioContext`** — the
   container has exactly one field per feature, so a step can only reach its own feature's vocabulary.
-  Extract to `dsl/shared/` on the second use, not the first.
+  Extract on first use when the code is **portable** — feature-blind, with a nameable second
+  consumer and a domain-shaped signature. Search `helpers/` and `dsl/shared/` before writing
+  private logic; when something close exists, add a lean sibling beside it rather than bolting a
+  mode flag onto it.
 - **Standard features return data and let the step assert**; exception adapters assert internally
-  and expose `Promise<void>` methods.
+  and expose `Promise<void>` methods. For data-driven features, return an observation plus the
+  sentence describing it, and pass that sentence as the `expect` message.
+- **No fixed-delay waits.** `waitFor` a concrete signal with an upper-bound timeout.
+- **Every scenario passes a negative control** before it is done — see "Proving a scenario can
+  fail" in the conventions doc.
 - Cross-step state is a private field on the DSL instance, never module scope.
 
 **→ Full rules, worked examples, anti-patterns, and a completion checklist: [TEST_LAYER_CONVENTIONS.md](TEST_LAYER_CONVENTIONS.md)**
@@ -83,7 +91,7 @@ the `scenario.<name>` field. Never share or split those files across features.
 
 - Each scenario has exactly one `Given` step — no `Background`, no `And` chaining
 - Steps describe _intent_, not browser mechanics (e.g. "I submit the form", not "I click the submit button")
-- Every feature file is tagged `@<featureName>` matching its folder name
+- Every feature file is tagged `@<featureName>` matching its file name
 
 ## Tags
 
@@ -104,7 +112,7 @@ Snapshots are OS-specific (filename includes `darwin`, `linux`, etc.). In CI, al
 
 ## Adding a new feature
 
-1. `features/<name>/<name>.feature` with `@<name>` tag
+1. `features/<name>.feature` with `@<name>` tag
 2. `dsl/<name>Dsl.ts` — plain class taking `BrowserDsl` (or abstract class extending it for exception features)
 3. Add field to `context/ScenarioContext.ts`
 4. Wire in `adapters/playwright/index.ts` (`createPlaywrightContext`)

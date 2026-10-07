@@ -52,14 +52,14 @@
 
 ## Tags
 
-Tags filter which tests run. Every feature file should have a tag matching its folder name (e.g. `@accessibility`, `@submit`).
+Tags filter which tests run. Every feature file should have a tag matching its file name (e.g. `@accessibility` on `accessibility.feature`).
 
 | Tag       | Purpose                                                          |
 | --------- | ---------------------------------------------------------------- |
-| `@<name>` | Identifies tests by feature — used with `npm run tags-test`      |
+| `@<name>` | Identifies tests by feature — used to run a subset by tag        |
 | `@only`   | Focuses a single test during development — **never commit this** |
 
-> **Warning:** `@only` compiles to `test.only()`. If committed, `npm run test` will silently skip every other feature. The pre-commit hook installed by `npm run setup-hooks` will block commits that contain it.
+> **Warning:** `@only` compiles to `test.only()`. If committed, the full test run will silently skip every other feature. Install a pre-commit hook that blocks commits containing it (the starter-kit ships one).
 
 ---
 
