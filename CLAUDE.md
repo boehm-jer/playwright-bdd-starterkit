@@ -111,3 +111,11 @@ Snapshots are OS-specific (filename includes `darwin`, `linux`, etc.). In CI, al
 5. `steps/<name>Steps.ts` importing `{ Given, When, Then }` from `../support/bdd`
 
 See [TEST_LAYER_CONVENTIONS.md](TEST_LAYER_CONVENTIONS.md) for worked examples of both paths.
+
+## Claude skills
+
+`.claude/skills/` holds two skills: `judgment-quiz` (elicits and validates business rules) and
+`feature-files` (writes and lints `.feature` files). When writing or changing any `.feature` file, run
+`node .claude/skills/feature-files/scripts/lint-features.mjs`. Each skill's `scripts/` has
+`node --test` tests. A change to `FEATURE_FILE_CONVENTIONS.md` that alters a mechanical rule must
+update `lint-features.mjs` and its tests in the same commit.
