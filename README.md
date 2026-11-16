@@ -17,6 +17,7 @@ A starter kit for end-to-end testing using [Playwright](https://playwright.dev) 
   - [Standard feature (driver-agnostic)](#standard-feature-driver-agnostic)
   - [Exception feature (driver-specific)](#exception-feature-driver-specific)
 - [Feature file conventions](#feature-file-conventions)
+- [Feature summary](#feature-summary)
 - [Test layer conventions](#test-layer-conventions)
 - [Advanced features](#advanced-features)
   - [Accessibility](#accessibility)
@@ -40,6 +41,7 @@ A starter kit for end-to-end testing using [Playwright](https://playwright.dev) 
 ## Prerequisites
 
 - Node.js `>=20.16.0`
+- Python `>=3.9` — only needed to regenerate the [feature summary](#feature-summary)
 
 ---
 
@@ -87,9 +89,10 @@ type error in a file no scenario happens to exercise would otherwise never surfa
 features/           dsl/            adapters/
 steps/              context/        support/
 helpers/            fixtures.ts     playwright.config.ts
+scripts/
 ```
 
-See [Architecture](#architecture) for what each layer does. `config/` and `setup/api/` are empty placeholders for environment configuration and API-based test setup.
+See [Architecture](#architecture) for what each layer does. `scripts/` holds the git hook, the `tags-test` prompt, and the feature-summary generator, which writes `FEATURE_SUMMARY.md` at the project root. `config/` and `setup/api/` are empty placeholders for environment configuration and API-based test setup.
 
 ---
 
@@ -204,6 +207,16 @@ export abstract class MySpecialDsl extends BrowserDsl {
 This project follows a specific "recipe" for writing Gherkin — one `Given` per scenario, strict `When`/`Then` alternation, a short list of legal scenario shapes, and tag conventions (including the `@only` guard). It's a recommendation distilled from experience, not a hard requirement.
 
 **→ See [FEATURE_FILE_CONVENTIONS.md](FEATURE_FILE_CONVENTIONS.md) for the full recipe, worked examples, and the tag reference.**
+
+---
+
+## Feature summary
+
+[FEATURE_SUMMARY.md](FEATURE_SUMMARY.md) lists every scenario name, grouped under its feature's title. It's generated from `features/`, so don't edit it by hand. Regenerate it whenever you add, rename or remove a scenario, and commit it with the feature-file change:
+
+```bash
+python3 scripts/update-feature-summary.py
+```
 
 ---
 
